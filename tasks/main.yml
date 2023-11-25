@@ -23,5 +23,11 @@
 
 # Configure PostgreSQL.
 - import_tasks: users.yml
+  tags:
+    - users
+    - new
 - import_tasks: databases.yml
+  tags:
+    - database
+    - new
 - import_tasks: users_props.yml
