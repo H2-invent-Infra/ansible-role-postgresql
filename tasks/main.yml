@@ -15,6 +15,9 @@
 - include_tasks: initialize.yml
 - include_tasks: configure.yml
 
+- include_tasks: "{{ postgres_replication_role }}.yml"
+  when: postgres_replication_role != 'skip'
+
 - name: Ensure PostgreSQL is started and enabled on boot.
   service:
     name: "{{ postgresql_daemon }}"

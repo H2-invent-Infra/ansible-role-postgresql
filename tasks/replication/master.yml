@@ -1,0 +1,33 @@
+- name: REPLICATION | MASTER | Configure master server
+  lineinfile:
+    state: present
+    backrefs: yes
+    dest: "{{ postgresql_config_path }}/postgresql.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop: "{{ postgres_replication_postgres_conf_lines }}"
+  notify: restart postgresql
+
+- name: REPLICATION | MASTER | Ensure PostgreSQL users are present.
+  postgresql_user:
+    name: "{{ postgres_replication_user }}"
+    password: "{{ postgres_replication_password }}"
+    role_attr_flags: replication
+  no_log: "{{ postgres_users_no_log }}"
+  become: true
+  become_user: "{{ postgresql_user }}"
+  vars:
+    ansible_ssh_pipelining: true
+  environment:
+    PGOPTIONS: "{{ (postgresql_auth_method == 'scram-sha-256') | ternary('-c password_encryption=scram-sha-256', '') }}"
+  tags:
+    - users
+
+- name: REPLICATION | MASTER | Add trust in pg_hba.conf
+  lineinfile:
+    state: present
+    dest: "{{ postgresql_config_path }}/pg_hba.conf"
+    regexp: 'host.*replication.*{{ item }}/32.*md5'
+    line: 'host    replication    {{ postgres_replication_user }}  {{ item }}/32 md5'
+  loop: "{{ postgres_replication_replica_address }}"
+  notify: restart postgresql

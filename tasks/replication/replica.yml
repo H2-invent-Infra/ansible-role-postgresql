@@ -1,0 +1,45 @@
+- name: REPLICATION | REPLICA | Stop PostgreSQL
+  service:
+    name: "{{ postgresql_daemon }}"
+    state: stopped
+
+- name: REPLICATION | REPLICA | Clear out data directory
+  file:
+    path: "{{ postgresql_data_dir }}"
+    state: absent
+
+- name: REPLICATION | REPLICA | Create empty data directory
+  file:
+    path: "{{ postgresql_data_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+
+- name: REPLICATION | REPLICA | Create base backup
+  command: pg_basebackup -X stream -D {{ postgresql_data_dir }} -h {{ postgres_replication_master_address }} -U {{ postgres_replication_user }}
+  become: yes
+  become_user: postgres
+
+- name: REPLICATION | REPLICA | Create recovery.conf
+  template:
+    src: replication/recovery.conf.j2
+    dest: "{{ postgresql_config_path }}/recovery.conf"
+    owner: postgres
+    group: postgres
+    mode: '0644'
+
+- name: REPLICATION | REPLICA | Enable hot standby
+  lineinfile:
+    state: present
+    dest: "{{ postgresql_config_path }}/postgresql.conf"
+    regexp: '^#?hot_standby = \w+(\s+#.*)'
+    line: 'hot_standby = yes\1'
+    mode: 0644
+  notify: restart postgresql
+
+- name: REPLICATION | REPLICA | Start and enable PostgreSQL
+  service:
+    name: "{{ postgresql_daemon }}"
+    state: started
+    enabled: yes

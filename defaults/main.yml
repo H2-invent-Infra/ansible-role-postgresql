@@ -70,3 +70,30 @@ postgresql_users: []
 
 # Whether to output user data when managing users.
 postgres_users_no_log: true
+
+
+postgres_replication_role: skip
+postgres_replication_user: replicator
+postgres_replication_password: '' # Store this in an Ansible vault
+
+postgres_replication_group_name: database_replica
+postgres_replication_group_name_master: database
+
+postgres_replication_master_address: "{{ hostvars[groups[postgres_replication_group_name_master][0]]['ansible_facts']['default_ipv4']['address'] }}"
+postgres_replication_replica_address: "{{ groups[postgres_replication_group_name] | map('extract', hostvars, 'ansible_facts') | map(attribute='default_ipv4') | map(attribute='address') | list }}"
+
+postgres_replication_postgres_conf_lines:
+  - regexp: '#?wal_level = \w+(\s+#.*)'
+    line: 'wal_level = hot_standby\1'
+
+  - regexp: '#?max_wal_senders = \d+(\s+#.*)'
+    line: 'max_wal_senders = {{ groups[postgres_replication_group_name] | length * 2 }}\1'
+
+  - regexp: '#?wal_keep_segments = .*(\s+#.*)'
+    line: 'wal_keep_segments = 100\1'
+
+  - regexp: '#?synchronous_standby_names = .*'
+    line: "synchronous_standby_names = 'postgres'"
+
+  - regexp: '#?synchronous_commit = \w+(\s+#.*)'
+    line: 'synchronous_commit = local\1'
