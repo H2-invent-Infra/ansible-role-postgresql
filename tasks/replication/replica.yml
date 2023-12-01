@@ -29,14 +29,10 @@
     group: postgres
     mode: '0644'
 
-- name: REPLICATION | REPLICA | Enable hot standby
-  lineinfile:
-    state: present
-    dest: "{{ postgresql_config_path }}/postgresql.conf"
-    regexp: '^#?hot_standby = \w+(\s+#.*)'
-    line: 'hot_standby = yes\1'
-    mode: 0644
-  notify: restart postgresql
+- name: REPLICATION | REPLICA | Setup postgres config on replica server
+  include_tasks: postgres_config.yml
+  vars:
+    postgresql_global_config_options: "{{ postgres_replication_replica_conf_lines }}"
 
 - name: REPLICATION | REPLICA | Start and enable PostgreSQL
   service:
